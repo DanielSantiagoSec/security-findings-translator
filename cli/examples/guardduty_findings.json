@@ -1,0 +1,71 @@
+﻿[
+  {
+    "id": "sample-gd-001",
+    "accountId": "123456789012",
+    "region": "us-east-1",
+    "type": "UnauthorizedAccess:EC2/SSHBruteForce",
+    "title": "EC2 instance i-0abc123def456 is performing SSH brute force attacks",
+    "description": "EC2 instance i-0abc123def456 is performing SSH brute force attacks against external host 203.0.113.42. SSH brute force attacks are used to gain unauthorized access to SSH-enabled systems.",
+    "severity": 8.0,
+    "service": {
+      "action": {
+        "actionType": "NETWORK_CONNECTION",
+        "networkConnectionAction": {
+          "connectionDirection": "OUTBOUND",
+          "remoteIpDetails": {
+            "ipAddressV4": "203.0.113.42",
+            "country": { "countryName": "Russia" }
+          },
+          "protocol": "TCP",
+          "localPortDetails": { "port": 22, "portName": "SSH" }
+        }
+      },
+      "eventFirstSeen": "2024-01-15T10:00:00Z",
+      "eventLastSeen": "2024-01-15T10:45:00Z",
+      "count": 1847
+    },
+    "resource": {
+      "resourceType": "Instance",
+      "instanceDetails": {
+        "instanceId": "i-0abc123def456",
+        "instanceType": "t3.medium",
+        "tags": [
+          { "key": "Name", "value": "prod-web-01" },
+          { "key": "Environment", "value": "production" }
+        ],
+        "networkInterfaces": [
+          { "publicIp": "54.12.34.56" }
+        ]
+      }
+    }
+  },
+  {
+    "id": "sample-gd-002",
+    "accountId": "123456789012",
+    "region": "us-east-1",
+    "type": "PrivilegeEscalation:IAMUser/AdministrativePermissions",
+    "title": "An IAM principal is escalating privileges and may have administrative permissions",
+    "description": "An IAM entity tried to escalate their privileges through multiple API calls that would grant administrator-level permissions.",
+    "severity": 7.5,
+    "service": {
+      "action": {
+        "actionType": "AWS_API_CALL",
+        "awsApiCallAction": {
+          "api": "AttachUserPolicy",
+          "serviceName": "iam.amazonaws.com",
+          "remoteIpDetails": { "ipAddressV4": "185.220.101.15" }
+        }
+      },
+      "eventFirstSeen": "2024-01-16T08:30:00Z",
+      "eventLastSeen": "2024-01-16T08:32:00Z",
+      "count": 5
+    },
+    "resource": {
+      "resourceType": "AccessKey",
+      "accessKeyDetails": {
+        "accessKeyId": "AKIAIOSFODNN7EXAMPLE",
+        "userName": "deploy-service-account"
+      }
+    }
+  }
+]

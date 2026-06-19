@@ -1,0 +1,17 @@
+﻿.env
+*.pyc
+__pycache__/
+.venv/
+venv/
+*.egg-info/
+dist/
+build/
+.pytest_cache/
+.coverage
+coverage.xml
+*.tfstate
+*.tfstate.backup
+.terraform/
+uploads/
+*.log
+.DS_Store

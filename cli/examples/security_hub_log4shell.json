@@ -1,0 +1,62 @@
+{
+  "Findings": [
+    {
+      "SchemaVersion": "2018-10-08",
+      "Id": "arn:aws:securityhub:us-east-1:123456789012:finding/abc123",
+      "ProductArn": "arn:aws:securityhub:us-east-1::product/aws/inspector",
+      "ProductName": "Inspector",
+      "AwsAccountId": "123456789012",
+      "Region": "us-east-1",
+      "Types": [
+        "Software and Configuration Checks/Vulnerabilities/CVE"
+      ],
+      "FirstObservedAt": "2024-01-10T12:00:00Z",
+      "LastObservedAt": "2024-01-16T09:00:00Z",
+      "CreatedAt": "2024-01-10T12:00:00Z",
+      "UpdatedAt": "2024-01-16T09:00:00Z",
+      "Severity": {
+        "Label": "CRITICAL",
+        "Normalized": 95
+      },
+      "Title": "CVE-2021-44228 - Log4Shell remote code execution vulnerability",
+      "Description": "Apache Log4j2 JNDI features do not protect against attacker controlled LDAP endpoints. An attacker who can control log messages can execute arbitrary code.",
+      "Remediation": {
+        "Recommendation": {
+          "Text": "Update Apache Log4j to version 2.17.1 or later.",
+          "Url": "https://logging.apache.org/log4j/2.x/security.html"
+        }
+      },
+      "Resources": [
+        {
+          "Type": "AwsEc2Instance",
+          "Id": "arn:aws:ec2:us-east-1:123456789012:instance/i-0def456abc789",
+          "Region": "us-east-1",
+          "Tags": {
+            "Name": "api-server-prod-03",
+            "Environment": "production",
+            "Service": "payments-api",
+            "DataClassification": "PCI"
+          }
+        }
+      ],
+      "Vulnerabilities": [
+        {
+          "Id": "CVE-2021-44228",
+          "RelatedVulnerabilities": [
+            "CVE-2021-44228",
+            "CVE-2021-45046"
+          ],
+          "Cvss": [
+            {
+              "Version": "3.1",
+              "BaseScore": 10.0,
+              "BaseVector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:C/C:H/I:H/A:H"
+            }
+          ],
+          "ExploitAvailable": "YES",
+          "FixAvailable": "YES"
+        }
+      ]
+    }
+  ]
+}
