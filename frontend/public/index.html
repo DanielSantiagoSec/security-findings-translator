@@ -1,0 +1,393 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Security Findings Translator</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --bg: #0f1117; --bg2: #1a1d27; --bg3: #22263a;
+      --border: #2e3347; --text: #e2e8f0; --text2: #94a3b8; --text3: #64748b;
+      --accent: #6366f1; --accent2: #818cf8;
+    }
+    body { font-family: system-ui, -apple-system, sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; }
+    button { cursor: pointer; border: none; font-family: inherit; }
+    input, select { font-family: inherit; }
+    .hidden { display: none !important; }
+    .inp { background: var(--bg3); border: 1px solid var(--border); border-radius: 6px; color: var(--text); padding: 10px 14px; width: 100%; font-size: 14px; }
+    .btn-primary { background: var(--accent); color: white; padding: 11px 24px; border-radius: 8px; font-size: 14px; font-weight: 600; }
+    .btn-primary:disabled { opacity: 0.5; }
+    .card { background: var(--bg2); border: 1px solid var(--border); border-radius: 12px; padding: 24px; }
+    .badge { padding: 2px 8px; border-radius: 4px; font-size: 11px; font-weight: 600; }
+    .page { padding: 32px; max-width: 900px; }
+    h2 { font-size: 22px; font-weight: 700; margin-bottom: 24px; }
+    .sidebar { width: 200px; background: var(--bg2); border-right: 1px solid var(--border); display: flex; flex-direction: column; padding: 20px 12px; height: 100vh; }
+    .nav-btn { padding: 9px 12px; border-radius: 8px; background: transparent; color: var(--text2); font-size: 14px; text-align: left; width: 100%; border: 1px solid transparent; margin-bottom: 2px; }
+    .nav-btn.active { background: rgba(99,102,241,0.1); color: var(--accent2); border-color: rgba(99,102,241,0.3); font-weight: 600; }
+    .app { display: flex; height: 100vh; overflow: hidden; }
+    .main { flex: 1; overflow-y: auto; }
+    table { width: 100%; border-collapse: collapse; font-size: 13px; }
+    th { padding: 12px 16px; text-align: left; color: var(--text3); font-size: 11px; font-weight: 600; background: var(--bg3); border-bottom: 1px solid var(--border); }
+    td { padding: 12px 16px; border-bottom: 1px solid var(--border); }
+    .section-label { color: var(--text3); font-size: 11px; font-weight: 600; letter-spacing: 0.08em; margin-bottom: 6px; text-transform: uppercase; }
+    .section-box { background: var(--bg3); border-radius: 8px; padding: 16px 20px; margin-bottom: 16px; }
+    .error { color: #ef4444; font-size: 13px; margin-bottom: 12px; }
+    .success { background: rgba(34,197,94,0.1); border: 1px solid rgba(34,197,94,0.3); border-radius: 10px; padding: 16px; color: #22c55e; }
+    .pill { padding: 6px 14px; border-radius: 20px; font-size: 13px; background: var(--bg3); color: var(--text2); border: 1px solid var(--border); cursor: pointer; }
+    .pill.active { background: var(--accent); color: white; border-color: var(--accent); }
+    .remediation-list { padding-left: 20px; line-height: 2; color: var(--text2); }
+  </style>
+</head>
+<body>
+
+<!-- LOGIN PAGE -->
+<div id="login-page">
+  <div style="min-height:100vh;display:flex;align-items:center;justify-content:center;">
+    <div class="card" style="width:380px;max-width:90vw;padding:40px;">
+      <div style="text-align:center;margin-bottom:32px;">
+        <div style="width:48px;height:48px;background:var(--accent);border-radius:12px;display:inline-flex;align-items:center;justify-content:center;margin-bottom:12px;">
+          <svg width="24" height="24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round"><path d="M12 2L3 7v5c0 5.25 3.75 10.15 9 11.25C17.25 22.15 21 17.25 21 12V7L12 2z"/></svg>
+        </div>
+        <h1 style="font-size:20px;font-weight:700;">Security Findings Translator</h1>
+        <p id="login-subtitle" style="color:var(--text2);font-size:13px;margin-top:4px;">Sign in to your account</p>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:14px;">
+        <input id="reg-name" class="inp hidden" placeholder="Full name" />
+        <input id="login-email" class="inp" type="email" placeholder="Email address" />
+        <input id="login-password" class="inp" type="password" placeholder="Password" />
+        <div id="login-error" class="error hidden"></div>
+        <button id="login-submit-btn" class="btn-primary" onclick="handleAuth()">Sign in</button>
+      </div>
+      <p style="text-align:center;color:var(--text2);font-size:13px;margin-top:20px;">
+        <span id="login-toggle-text">Don't have an account? </span>
+        <span id="login-toggle" style="color:var(--accent2);cursor:pointer;" onclick="toggleMode()">Register</span>
+      </p>
+    </div>
+  </div>
+</div>
+
+<!-- MAIN APP -->
+<div id="app" class="app hidden">
+  <aside class="sidebar">
+    <div style="font-weight:700;font-size:11px;padding:0 8px;margin-bottom:28px;color:var(--accent2);">Security Findings Translator</div>
+    <nav style="flex:1;">
+      <button class="nav-btn active" id="nav-dashboard" onclick="showPage('dashboard')">Dashboard</button>
+      <button class="nav-btn" id="nav-upload" onclick="showPage('upload')">Upload</button>
+      <button class="nav-btn" id="nav-findings" onclick="showPage('findings')">Findings</button>
+    </nav>
+    <button class="nav-btn" onclick="logout()">Sign out</button>
+  </aside>
+  <main class="main">
+    <!-- DASHBOARD -->
+    <div id="page-dashboard" class="page">
+      <h2>Dashboard</h2>
+      <div id="stats-grid" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:16px;margin-bottom:32px;"></div>
+      <div class="card">
+        <h3 style="font-size:15px;font-weight:600;margin-bottom:16px;">Top Risk Findings</h3>
+        <div id="top-findings"></div>
+      </div>
+    </div>
+
+    <!-- UPLOAD -->
+    <div id="page-upload" class="page hidden">
+      <h2>Upload Findings</h2>
+      <p style="color:var(--text2);font-size:14px;margin-bottom:28px;">Supports GuardDuty JSON, Security Hub ASFF, Nessus JSON, and generic CSV/JSON.</p>
+      <div id="drop-zone" class="card" style="text-align:center;padding:48px;cursor:pointer;margin-bottom:20px;" onclick="document.getElementById('file-input').click()">
+        <input id="file-input" type="file" accept=".json,.csv" style="display:none;" onchange="handleFileSelect(event)"/>
+        <p id="drop-text" style="font-weight:600;">Click to browse files</p>
+        <p style="color:var(--text3);font-size:13px;margin-top:6px;">.json or .csv</p>
+      </div>
+      <div id="upload-error" class="error hidden"></div>
+      <div id="upload-success" class="success hidden"></div>
+      <button id="upload-btn" class="btn-primary" onclick="uploadFile()" disabled style="margin-top:8px;">Upload & Parse</button>
+    </div>
+
+    <!-- FINDINGS LIST -->
+    <div id="page-findings" class="page hidden">
+      <h2 id="findings-title">Findings</h2>
+      <div id="findings-table-wrap" class="card" style="overflow:hidden;padding:0;">
+        <table>
+          <thead><tr><th>Severity</th><th>Risk</th><th>Title</th><th>Source</th><th></th></tr></thead>
+          <tbody id="findings-tbody"></tbody>
+        </table>
+      </div>
+      <div id="findings-empty" class="hidden" style="text-align:center;padding:60px;color:var(--text3);">No findings. Upload a file first.</div>
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-top:16px;">
+        <span id="findings-count" style="color:var(--text3);font-size:13px;"></span>
+        <div style="display:flex;gap:8px;">
+          <button onclick="prevPage()" id="prev-btn" class="btn-primary" style="padding:6px 14px;font-size:12px;opacity:0.5;" disabled>← Prev</button>
+          <button onclick="nextPage()" id="next-btn" class="btn-primary" style="padding:6px 14px;font-size:12px;">Next →</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- FINDING DETAIL -->
+    <div id="page-detail" class="page hidden">
+      <button onclick="showPage('findings')" style="background:none;color:var(--text2);font-size:13px;margin-bottom:20px;">← Back to findings</button>
+      <div id="detail-header" class="card" style="margin-bottom:24px;"></div>
+      <div style="display:flex;align-items:center;gap:12px;margin-bottom:20px;flex-wrap:wrap;">
+        <span style="color:var(--text3);font-size:13px;">Translate for:</span>
+        <div id="audience-pills" style="display:flex;gap:6px;flex-wrap:wrap;"></div>
+        <button id="translate-btn" class="btn-primary" style="margin-left:auto;padding:8px 20px;font-size:13px;" onclick="translateFinding()">Translate</button>
+      </div>
+      <div id="translate-error" class="error hidden"></div>
+      <div id="translation-output" class="hidden"></div>
+    </div>
+  </main>
+</div>
+
+<script>
+const API = '/api/v1';
+let token = localStorage.getItem('sft_token') || '';
+let isRegister = false;
+let selectedFile = null;
+let currentFinding = null;
+let currentAudience = 'executive';
+let findingsPage = 1;
+let findingsTotal = 0;
+const PROJECT_ID = '00000000-0000-0000-0000-000000000001';
+const AUDIENCES = ['executive','manager','developer','security_analyst','soc_analyst','devsecops','grc'];
+const SEV_COLORS = {CRITICAL:'#ef4444',HIGH:'#f97316',MEDIUM:'#eab308',LOW:'#22c55e',INFORMATIONAL:'#3b82f6'};
+
+async function apiFetch(method, path, body, isForm) {
+  const headers = {};
+  if (token) headers['Authorization'] = 'Bearer ' + token;
+  if (!isForm && body) headers['Content-Type'] = 'application/json';
+  const res = await fetch(API + path, {
+    method, headers,
+    body: isForm ? body : (body ? JSON.stringify(body) : undefined)
+  });
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) throw new Error(data.detail || 'HTTP ' + res.status);
+  return data;
+}
+
+function sevBadge(sev) {
+  const c = SEV_COLORS[sev] || '#64748b';
+  return '<span class="badge" style="background:'+c+'22;color:'+c+';border:1px solid '+c+'44">'+sev+'</span>';
+}
+
+function riskPill(score) {
+  if (score == null) return '<span style="color:var(--text3)">-</span>';
+  const c = score >= 8 ? '#ef4444' : score >= 6 ? '#f97316' : score >= 4 ? '#eab308' : '#22c55e';
+  return '<span class="badge" style="background:'+c+'22;color:'+c+';border:1px solid '+c+'44;font-weight:700">'+score.toFixed(1)+'</span>';
+}
+
+// AUTH
+function toggleMode() {
+  isRegister = !isRegister;
+  document.getElementById('reg-name').classList.toggle('hidden', !isRegister);
+  document.getElementById('login-subtitle').textContent = isRegister ? 'Create an account' : 'Sign in to your account';
+  document.getElementById('login-submit-btn').textContent = isRegister ? 'Create account' : 'Sign in';
+  document.getElementById('login-toggle').textContent = isRegister ? 'Sign in' : 'Register';
+  document.getElementById('login-toggle-text').textContent = isRegister ? 'Already have an account? ' : "Don't have an account? ";
+  document.getElementById('login-error').classList.add('hidden');
+}
+
+async function handleAuth() {
+  const email = document.getElementById('login-email').value;
+  const password = document.getElementById('login-password').value;
+  const errEl = document.getElementById('login-error');
+  errEl.classList.add('hidden');
+  try {
+    if (isRegister) {
+      const name = document.getElementById('reg-name').value;
+      await apiFetch('POST', '/auth/register', {email, password, full_name: name});
+      toggleMode();
+      errEl.style.color = '#22c55e';
+      errEl.textContent = 'Registered! Please sign in.';
+      errEl.classList.remove('hidden');
+      return;
+    }
+    const data = await apiFetch('POST', '/auth/login', {email, password});
+    token = data.access_token;
+    localStorage.setItem('sft_token', token);
+    showApp();
+  } catch(e) {
+    errEl.style.color = '#ef4444';
+    errEl.textContent = e.message;
+    errEl.classList.remove('hidden');
+  }
+}
+
+function logout() {
+  token = ''; localStorage.removeItem('sft_token');
+  document.getElementById('app').classList.add('hidden');
+  document.getElementById('login-page').classList.remove('hidden');
+}
+
+function showApp() {
+  document.getElementById('login-page').classList.add('hidden');
+  document.getElementById('app').classList.remove('hidden');
+  showPage('dashboard');
+}
+
+// NAVIGATION
+function showPage(name) {
+  ['dashboard','upload','findings','detail'].forEach(p => {
+    document.getElementById('page-'+p).classList.add('hidden');
+  });
+  document.getElementById('page-'+name).classList.remove('hidden');
+  ['dashboard','upload','findings'].forEach(n => {
+    const btn = document.getElementById('nav-'+n);
+    if (btn) btn.classList.toggle('active', n === name);
+  });
+  if (name === 'dashboard') loadDashboard();
+  if (name === 'findings') loadFindings();
+}
+
+// DASHBOARD
+async function loadDashboard() {
+  try {
+    const s = await apiFetch('GET', '/findings/dashboard?project_id='+PROJECT_ID);
+    const grid = document.getElementById('stats-grid');
+    grid.innerHTML = [
+      {label:'Total Findings', value:s.total_findings, color:'var(--accent)'},
+      {label:'Open', value:s.open_findings, color:'#f97316'},
+      {label:'Critical', value:s.critical_count, color:'#ef4444'},
+      {label:'Avg Risk Score', value:(s.avg_risk_score||0).toFixed(1), color:'#eab308'},
+    ].map(c => '<div class="card"><div style="color:var(--text2);font-size:12px;margin-bottom:6px;">'+c.label+'</div><div style="font-size:28px;font-weight:800;color:'+c.color+'">'+c.value+'</div></div>').join('');
+    const tf = document.getElementById('top-findings');
+    if (!s.top_findings || s.top_findings.length === 0) {
+      tf.innerHTML = '<p style="color:var(--text3);font-size:13px;">No findings yet. Upload a file to get started.</p>';
+    } else {
+      tf.innerHTML = s.top_findings.map(f =>
+        '<div style="display:flex;align-items:center;gap:12px;padding:10px 0;border-bottom:1px solid var(--border);">'+
+        sevBadge(f.severity)+'<span style="flex:1;font-size:13px;">'+f.title+'</span>'+riskPill(f.risk_score)+'</div>'
+      ).join('');
+    }
+  } catch(e) {
+    document.getElementById('top-findings').innerHTML = '<p style="color:var(--text3);font-size:13px;">Could not load dashboard.</p>';
+  }
+}
+
+// UPLOAD
+function handleFileSelect(e) {
+  selectedFile = e.target.files[0];
+  if (selectedFile) {
+    document.getElementById('drop-text').textContent = selectedFile.name;
+    document.getElementById('upload-btn').disabled = false;
+  }
+}
+
+async function uploadFile() {
+  if (!selectedFile) return;
+  document.getElementById('upload-error').classList.add('hidden');
+  document.getElementById('upload-success').classList.add('hidden');
+  document.getElementById('upload-btn').disabled = true;
+  document.getElementById('upload-btn').textContent = 'Processing...';
+  const fd = new FormData();
+  fd.append('file', selectedFile);
+  fd.append('project_id', PROJECT_ID);
+  try {
+    const data = await apiFetch('POST', '/findings/upload', fd, true);
+    document.getElementById('upload-success').innerHTML = '<strong>Upload complete</strong><br><span style="font-size:13px;opacity:0.8;">'+data.findings_parsed+' findings parsed successfully.</span>';
+    document.getElementById('upload-success').classList.remove('hidden');
+  } catch(e) {
+    document.getElementById('upload-error').textContent = e.message;
+    document.getElementById('upload-error').classList.remove('hidden');
+  } finally {
+    document.getElementById('upload-btn').disabled = false;
+    document.getElementById('upload-btn').textContent = 'Upload & Parse';
+  }
+}
+
+// FINDINGS
+async function loadFindings() {
+  try {
+    const data = await apiFetch('GET', '/findings?project_id='+PROJECT_ID+'&page='+findingsPage+'&page_size=20');
+    findingsTotal = data.total || 0;
+    document.getElementById('findings-title').textContent = 'Findings ('+findingsTotal+')';
+    document.getElementById('findings-count').textContent = 'Page '+findingsPage+' · '+findingsTotal+' total';
+    document.getElementById('prev-btn').disabled = findingsPage <= 1;
+    document.getElementById('prev-btn').style.opacity = findingsPage <= 1 ? '0.5' : '1';
+    document.getElementById('next-btn').disabled = (data.findings||[]).length < 20;
+    document.getElementById('next-btn').style.opacity = (data.findings||[]).length < 20 ? '0.5' : '1';
+    const tbody = document.getElementById('findings-tbody');
+    if (!data.findings || data.findings.length === 0) {
+      tbody.innerHTML = '';
+      document.getElementById('findings-empty').classList.remove('hidden');
+      document.getElementById('findings-table-wrap').classList.add('hidden');
+    } else {
+      document.getElementById('findings-empty').classList.add('hidden');
+      document.getElementById('findings-table-wrap').classList.remove('hidden');
+      tbody.innerHTML = data.findings.map(f =>
+        '<tr onclick="openFinding(\''+f.id+'\')" style="cursor:pointer;" onmouseover="this.style.background=\'var(--bg3)\'" onmouseout="this.style.background=\'\'">'+
+        '<td>'+sevBadge(f.severity)+'</td>'+
+        '<td>'+riskPill(f.risk_score)+'</td>'+
+        '<td style="max-width:300px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">'+f.title+'</td>'+
+        '<td style="color:var(--text2);">'+(f.source_tool||f.source)+'</td>'+
+        '<td><button class="btn-primary" style="padding:5px 12px;font-size:12px;" onclick="event.stopPropagation();openFinding(\''+f.id+'\')">Translate</button></td>'+
+        '</tr>'
+      ).join('');
+    }
+  } catch(e) {
+    document.getElementById('findings-tbody').innerHTML = '<tr><td colspan="5" style="color:var(--text3);text-align:center;padding:40px;">Could not load findings.</td></tr>';
+  }
+}
+
+function prevPage() { if (findingsPage > 1) { findingsPage--; loadFindings(); } }
+function nextPage() { findingsPage++; loadFindings(); }
+
+// FINDING DETAIL
+async function openFinding(id) {
+  try {
+    currentFinding = await apiFetch('GET', '/findings/'+id);
+    document.getElementById('detail-header').innerHTML =
+      '<div style="display:flex;gap:12px;margin-bottom:12px;">'+sevBadge(currentFinding.severity)+riskPill(currentFinding.risk_score)+'<span style="color:var(--text2);font-size:12px;">'+(currentFinding.source_tool||currentFinding.source)+'</span></div>'+
+      '<h2 style="font-size:18px;margin-bottom:8px;">'+currentFinding.title+'</h2>'+
+      '<p style="color:var(--text2);font-size:13px;">'+(currentFinding.description||'')+'</p>';
+    const pills = document.getElementById('audience-pills');
+    pills.innerHTML = AUDIENCES.map(a =>
+      '<button class="pill'+(a===currentAudience?' active':'')+'" onclick="setAudience(\''+a+'\')">'+a.replace('_',' ')+'</button>'
+    ).join('');
+    document.getElementById('translation-output').classList.add('hidden');
+    document.getElementById('translation-output').innerHTML = '';
+    document.getElementById('translate-error').classList.add('hidden');
+    showPage('detail');
+  } catch(e) { alert('Could not load finding: '+e.message); }
+}
+
+function setAudience(a) {
+  currentAudience = a;
+  document.querySelectorAll('#audience-pills .pill').forEach(btn => {
+    btn.classList.toggle('active', btn.textContent === a.replace('_',' '));
+  });
+}
+
+async function translateFinding() {
+  if (!currentFinding) return;
+  const btn = document.getElementById('translate-btn');
+  const errEl = document.getElementById('translate-error');
+  const out = document.getElementById('translation-output');
+  btn.textContent = 'Translating...'; btn.disabled = true;
+  errEl.classList.add('hidden'); out.classList.add('hidden');
+  try {
+    const t = await apiFetch('POST', '/translations', {finding_id: currentFinding.id, audience: currentAudience});
+    let html = '';
+    if (t.executive_summary) html += '<div class="section-box"><div class="section-label">Summary</div><p style="line-height:1.7;">'+t.executive_summary+'</p></div>';
+    if (t.business_impact) html += '<div class="section-box"><div class="section-label">Business Impact</div><p style="line-height:1.7;color:var(--text2);">'+t.business_impact+'</p></div>';
+    if (t.threat_scenario) {
+      const lines = t.threat_scenario.split('\n').filter(l=>l.trim());
+      html += '<div class="section-box"><div class="section-label">Threat Scenario</div>'+lines.map(l=>'<p style="line-height:1.7;color:var(--text2);margin-bottom:6px;">'+l+'</p>').join('')+'</div>';
+    }
+    if (t.risk_rating) html += '<div class="section-box"><div class="section-label">Risk Rating</div><p style="font-weight:600;">'+t.risk_rating+'</p></div>';
+    if (t.remediation_steps && t.remediation_steps.length > 0) {
+      html += '<div class="section-box"><div class="section-label">Remediation Steps</div><ol class="remediation-list">'+t.remediation_steps.map(s=>'<li>'+s+'</li>').join('')+'</ol></div>';
+    }
+    out.innerHTML = html;
+    out.classList.remove('hidden');
+  } catch(e) {
+    errEl.textContent = e.message;
+    errEl.classList.remove('hidden');
+  } finally {
+    btn.textContent = 'Translate'; btn.disabled = false;
+  }
+}
+
+// INIT
+if (token) showApp();
+</script>
+</body>
+</html>

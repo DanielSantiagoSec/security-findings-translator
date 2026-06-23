@@ -1,0 +1,32 @@
+FROM python:3.12-slim
+
+WORKDIR /app
+
+RUN apt-get update && apt-get install -y --no-install-recommends curl && rm -rf /var/lib/apt/lists/*
+
+COPY . .
+
+RUN pip install --no-cache-dir \
+    "pydantic[email]" \
+    pydantic-settings \
+    google-genai \
+    fastapi \
+    "uvicorn[standard]" \
+    python-multipart \
+    sqlalchemy \
+    asyncpg \
+    psycopg2-binary \
+    alembic \
+    redis \
+    "python-jose[cryptography]" \
+    "passlib[bcrypt]" \
+    "bcrypt==4.0.1" \
+    python-dotenv \
+    boto3 \
+    httpx \
+    click \
+    rich
+
+EXPOSE 8000
+
+CMD ["uvicorn", "backend.main:app", "--host", "0.0.0.0", "--port", "8000", "--reload"]

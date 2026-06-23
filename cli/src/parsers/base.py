@@ -64,10 +64,10 @@ class ParserFactory:
         if path.suffix.lower() == ".csv":
             from .generic_csv import GenericCSVParser
             parser = GenericCSVParser()
-            with open(path, "r", encoding="utf-8") as f:
+            with open(path, "r", encoding="utf-8-sig") as f:
                 data = f.read()
             return parser.parse(data)
-        with open(path, "r", encoding="utf-8") as f:
+        with open(path, "r", encoding="utf-8-sig") as f:
             raw = json.load(f)
         parser = cls.for_data(raw)
         return parser.parse(raw)
