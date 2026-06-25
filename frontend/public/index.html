@@ -1,6 +1,3 @@
-bash
-
-cat > /home/claude/index_new.html << 'HTMLEOF'
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -56,13 +53,14 @@ cat > /home/claude/index_new.html << 'HTMLEOF'
     #app { display: flex; flex-direction: column; height: 100vh; overflow: hidden; }
 
     /* TOP BAR */
-    .topbar { display: flex; align-items: center; gap: 16px; padding: 0 24px; height: 56px; background: var(--bg2); border-bottom: 1px solid var(--border); flex-shrink: 0; }
+    .topbar { display: flex; align-items: center; gap: 16px; padding: 0 24px; height: 64px; background: var(--bg2); border-bottom: 1px solid var(--border); flex-shrink: 0; position: relative; }
     .topbar-logo { display: flex; align-items: center; gap: 10px; font-weight: 700; font-size: 15px; color: var(--text); }
     .topbar-logo-icon { width: 30px; height: 30px; background: linear-gradient(135deg, var(--accent), #8b5cf6); border-radius: 8px; display: flex; align-items: center; justify-content: center; }
     .topbar-stats { display: flex; gap: 24px; margin-left: 32px; }
     .topbar-stat { display: flex; flex-direction: column; }
-    .topbar-stat-val { font-size: 16px; font-weight: 700; line-height: 1; }
-    .topbar-stat-lbl { font-size: 10px; color: var(--text3); text-transform: uppercase; letter-spacing: 0.08em; margin-top: 2px; }
+    .topbar-stat-val { font-size: 22px; font-weight: 800; line-height: 1; }
+    .topbar-stat-lbl { font-size: 10px; color: var(--text3); text-transform: uppercase; letter-spacing: 0.08em; margin-top: 3px; }
+    .topbar-stats { position: absolute; left: 50%; transform: translateX(-50%); }
     .topbar-actions { margin-left: auto; display: flex; align-items: center; gap: 10px; }
     .btn-sm { padding: 7px 14px; border-radius: var(--radius); font-size: 12px; font-weight: 600; border: 1px solid var(--border); background: var(--bg3); color: var(--text2); transition: all 0.15s; }
     .btn-sm:hover { background: var(--bg4); color: var(--text); border-color: var(--border2); }
@@ -203,6 +201,7 @@ cat > /home/claude/index_new.html << 'HTMLEOF'
       <div class="topbar-stat"><span class="topbar-stat-val" style="color:var(--high)" id="stat-high">—</span><span class="topbar-stat-lbl">High</span></div>
       <div class="topbar-stat"><span class="topbar-stat-val" style="color:var(--accent2)" id="stat-avg">—</span><span class="topbar-stat-lbl">Avg Risk</span></div>
     </div>
+    <div style="flex:1;"></div>
     <div class="topbar-actions">
       <button class="btn-sm btn-danger" onclick="clearFindings()">Clear All</button>
       <button class="btn-sm btn-accent" onclick="openUploadModal()">+ Upload</button>
@@ -217,6 +216,12 @@ cat > /home/claude/index_new.html << 'HTMLEOF'
     <div class="findings-panel">
       <div class="findings-panel-header">
         <input class="findings-search" id="findings-search" placeholder="Search findings..." oninput="filterFindings()" />
+        <select id="sort-select" onchange="sortFindings()" style="background:var(--bg3);border:1px solid var(--border);border-radius:var(--radius);color:var(--text2);padding:8px 10px;font-size:12px;outline:none;flex-shrink:0;">
+          <option value="risk_desc">Risk ↓</option>
+          <option value="risk_asc">Risk ↑</option>
+          <option value="sev_desc">Severity ↓</option>
+          <option value="alpha">A-Z</option>
+        </select>
       </div>
       <div class="findings-list" id="findings-list">
         <div class="findings-empty">
@@ -258,6 +263,7 @@ cat > /home/claude/index_new.html << 'HTMLEOF'
           <div id="audience-tabs" style="display:flex;gap:6px;flex-wrap:wrap;flex:1;"></div>
           <div class="translate-btn-wrap">
             <button class="btn-sm btn-accent" id="translate-btn" onclick="translateFinding()">Translate</button>
+            <button class="btn-sm" id="regenerate-btn" onclick="regenerateTranslation()" title="Force regenerate — ignores cached translation">↺ Regenerate</button>
           </div>
         </div>
 
@@ -412,10 +418,24 @@ async function loadFindings() {
   } catch(e) {}
 }
 
+const SEV_ORDER = {CRITICAL:4, HIGH:3, MEDIUM:2, LOW:1, INFORMATIONAL:0};
+
+function sortFindings() {
+  const val = document.getElementById('sort-select').value;
+  filteredFindings = [...filteredFindings].sort((a, b) => {
+    if (val === 'risk_desc') return (b.risk_score||0) - (a.risk_score||0);
+    if (val === 'risk_asc') return (a.risk_score||0) - (b.risk_score||0);
+    if (val === 'sev_desc') return (SEV_ORDER[b.severity]||0) - (SEV_ORDER[a.severity]||0);
+    if (val === 'alpha') return a.title.localeCompare(b.title);
+    return 0;
+  });
+  renderFindingsList();
+}
+
 function filterFindings() {
   const q = document.getElementById('findings-search').value.toLowerCase();
-  filteredFindings = q ? allFindings.filter(f => f.title.toLowerCase().includes(q) || (f.source_tool||f.source).toLowerCase().includes(q)) : allFindings;
-  renderFindingsList();
+  filteredFindings = q ? allFindings.filter(f => f.title.toLowerCase().includes(q) || (f.source_tool||f.source).toLowerCase().includes(q)) : [...allFindings];
+  sortFindings();
 }
 
 function renderFindingsList() {
@@ -540,6 +560,45 @@ function buildTranslationHTML(t) {
 
 function section(label, body) {
   return '<div class="t-section"><div class="t-section-label">' + label + '</div>' + body + '</div>';
+}
+
+async function regenerateTranslation() {
+  if (!currentFinding) return;
+  const targetAudience = currentAudience;
+  const btn = document.getElementById('regenerate-btn');
+  const loading = document.getElementById('translation-loading');
+  const placeholder = document.getElementById('translation-placeholder');
+  const errEl = document.getElementById('translation-error');
+  const label = document.getElementById('translation-viewing-label');
+  const sections = document.getElementById('translation-sections');
+
+  btn.textContent = '↺ Regenerating...'; btn.disabled = true;
+  placeholder.classList.add('hidden');
+  sections.innerHTML = '';
+  label.classList.add('hidden');
+  errEl.classList.add('hidden');
+  loading.classList.remove('hidden');
+  document.getElementById('loading-text').textContent = 'Regenerating ' + AUDIENCE_LABELS[targetAudience] + ' translation...';
+
+  try {
+    const t = await apiFetch('POST', '/translations/refresh', {finding_id: currentFinding.id, audience: targetAudience});
+    cachedTranslations[targetAudience] = t;
+    renderAudienceTabs();
+    if (currentAudience === targetAudience) {
+      loading.classList.add('hidden');
+      label.textContent = 'Viewing: ' + AUDIENCE_LABELS[targetAudience].toUpperCase();
+      label.classList.remove('hidden');
+      sections.innerHTML = buildTranslationHTML(t);
+    }
+  } catch(e) {
+    if (currentAudience === targetAudience) {
+      loading.classList.add('hidden');
+      errEl.textContent = e.message;
+      errEl.classList.remove('hidden');
+    }
+  } finally {
+    btn.textContent = '↺ Regenerate'; btn.disabled = false;
+  }
 }
 
 async function translateFinding() {

@@ -100,7 +100,7 @@ class Translation(Base):
     technical_explanation: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
     business_impact: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
     threat_scenario: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
-    risk_rating: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
+    risk_rating: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
     remediation_steps: Mapped[Optional[list]] = mapped_column(JSON, default=list)
     terraform_example: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
     aws_cli_example: Mapped[Optional[str]] = mapped_column(Text, nullable=True)

@@ -85,3 +85,21 @@ async def update_status(
     row.status = body.status
     await db.flush()
     return row
+
+
+@router.delete("/clear", status_code=200)
+async def clear_findings(
+    project_id: str,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    from sqlalchemy import delete
+    from ...models.db import Translation
+    finding_ids = (await db.execute(
+        select(Finding.id).where(Finding.project_id == project_id)
+    )).scalars().all()
+    if finding_ids:
+        await db.execute(delete(Translation).where(Translation.finding_id.in_(finding_ids)))
+    await db.execute(delete(Finding).where(Finding.project_id == project_id))
+    await db.flush()
+    return {"message": "All findings cleared", "project_id": project_id}

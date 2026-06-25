@@ -8,7 +8,7 @@ from ..models.finding import AudienceMode, NormalizedFinding, Translation
 from ..prompts.audience_prompts import build_finding_prompt, get_system_prompt
 
 logger = logging.getLogger(__name__)
-DEFAULT_MODEL = os.getenv("TRANSLATOR_MODEL", "gemini-2.5-flash")
+DEFAULT_MODEL = os.getenv("TRANSLATOR_MODEL", "gemini-3.1-flash-lite")
 DEFAULT_MAX_TOKENS = int(os.getenv("TRANSLATOR_MAX_TOKENS", "4000"))
 
 
@@ -71,12 +71,7 @@ class TranslationEngine:
             )
         except Exception as e:
             logger.error(f"Translation failed for finding {finding.id}: {e}")
-            return Translation(
-                finding_id=finding.id,
-                audience=audience,
-                executive_summary=f"Translation failed: {str(e)}",
-                model_used=self.model,
-            )
+            raise
 
     def _clean_step(self, step):
         cleaned = step.strip()
