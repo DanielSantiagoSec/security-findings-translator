@@ -150,6 +150,8 @@
 
     /* SPINNER */
     @keyframes spin { to { transform: rotate(360deg); } }
+    .info-icon { display: inline-flex; align-items: center; justify-content: center; width: 14px; height: 14px; border-radius: 50%; background: var(--bg4); color: var(--text3); font-size: 9px; font-weight: 700; cursor: help; border: 1px solid var(--border); flex-shrink: 0; }
+    #global-tooltip { display: none; position: fixed; background: var(--bg4); border: 1px solid var(--border2); border-radius: var(--radius); padding: 10px 14px; width: 240px; font-size: 12px; color: var(--text2); line-height: 1.5; z-index: 9999; box-shadow: 0 8px 24px rgba(0,0,0,0.4); pointer-events: none; }
     .spinner { width: 20px; height: 20px; border: 2px solid var(--border); border-top-color: var(--accent); border-radius: 50%; animation: spin 0.7s linear infinite; flex-shrink: 0; }
 
     /* TOAST */
@@ -306,6 +308,32 @@
   </div>
 </div>
 
+<div id="global-tooltip"></div>
+<script>
+document.addEventListener('mouseover', function(e) {
+  const icon = e.target.closest('.info-icon');
+  if (icon) {
+    const tip = icon.getAttribute('data-tip');
+    if (!tip) return;
+    const el = document.getElementById('global-tooltip');
+    el.textContent = tip;
+    el.style.display = 'block';
+    const rect = icon.getBoundingClientRect();
+    let top = rect.top - el.offsetHeight - 10;
+    let left = rect.left + rect.width/2 - 120;
+    if (top < 8) top = rect.bottom + 10;
+    if (left < 8) left = 8;
+    if (left + 240 > window.innerWidth - 8) left = window.innerWidth - 248;
+    el.style.top = top + 'px';
+    el.style.left = left + 'px';
+  }
+});
+document.addEventListener('mouseout', function(e) {
+  if (e.target.closest('.info-icon')) {
+    document.getElementById('global-tooltip').style.display = 'none';
+  }
+});
+</script>
 <script>
 const API = '/api/v1';
 const PROJECT_ID = '00000000-0000-0000-0000-000000000001';
@@ -482,11 +510,64 @@ async function openFinding(id) {
     const sc = SEV_COLORS[currentFinding.severity] || '#64748b';
     const rc = currentFinding.risk_score >= 8 ? '#ef4444' : currentFinding.risk_score >= 6 ? '#f97316' : currentFinding.risk_score >= 4 ? '#eab308' : '#22c55e';
     document.getElementById('detail-title').textContent = currentFinding.title;
-    let meta = '<span class="sev-badge" style="background:' + sc + '22;color:' + sc + ';border:1px solid ' + sc + '44;">' + currentFinding.severity + '</span>';
-    if (currentFinding.risk_score) meta += '<span class="risk-pill" style="background:' + rc + '22;color:' + rc + ';border:1px solid ' + rc + '44;font-weight:700;">' + currentFinding.risk_score.toFixed(1) + ' / 10</span>';
+    let meta = '';
+
+    // Row 1: severity, risk score, source, region
+    meta += '<div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:10px;">';
+    meta += '<span class="sev-badge" style="background:' + sc + '22;color:' + sc + ';border:1px solid ' + sc + '44;">' + currentFinding.severity + '</span>';
+    if (currentFinding.risk_score != null) meta += '<span class="risk-pill" style="background:' + rc + '22;color:' + rc + ';border:1px solid ' + rc + '44;font-weight:700;">' + currentFinding.risk_score.toFixed(1) + ' / 10</span>';
+    if (currentFinding.scoring_method) meta += '<span class="detail-meta-item">scored by ' + escHtml(currentFinding.scoring_method) + '</span>';
+    meta += '<span class="detail-meta-item">•</span>';
     meta += '<span class="detail-meta-item">' + escHtml(currentFinding.source_tool || currentFinding.source) + '</span>';
-    if (currentFinding.asset_region) meta += '<span class="detail-meta-item">📍 ' + currentFinding.asset_region + '</span>';
-    if (currentFinding.cve_ids && currentFinding.cve_ids.length) meta += '<span class="epss-badge">' + currentFinding.cve_ids[0] + '</span>';
+    if (currentFinding.asset_region) meta += '<span class="detail-meta-item">\u{1F4CD} ' + escHtml(currentFinding.asset_region) + '</span>';
+    meta += '</div>';
+
+    // Row 2: KEV banner
+    if (currentFinding.in_kev) {
+      meta += '<div style="display:flex;align-items:center;gap:8px;padding:8px 12px;background:rgba(239,68,68,0.1);border:1px solid rgba(239,68,68,0.3);border-radius:6px;margin-bottom:10px;">';
+      meta += '<span>\u26A0\uFE0F</span>';
+      meta += '<div><div style="color:#ef4444;font-weight:700;font-size:12px;display:flex;align-items:center;gap:6px;">IN CISA KEV — ACTIVELY EXPLOITED IN THE WILD';
+      meta += '<span class="info-icon" data-tip="CISA KEV — Known Exploited Vulnerabilities catalog. Maintained by the US Cybersecurity and Infrastructure Security Agency. Inclusion means real attackers are actively exploiting this vulnerability right now. This overrides theoretical severity scores.">i</span></div>';
+      meta += '<div style="color:var(--text2);font-size:11px;margin-top:2px;">Confirmed actively exploited. <a href="https://www.cisa.gov/known-exploited-vulnerabilities-catalog" target="_blank" style="color:#ef4444;">CISA KEV Catalog ↗</a></div></div>';
+      meta += '</div>';
+    }
+
+    // Row 3: EPSS, CVSS, CVE
+    const hasEpss = currentFinding.epss_score != null && currentFinding.epss_score > 0;
+    const hasCvss = currentFinding.cvss_score != null;
+    const hasCve = currentFinding.cve_ids && currentFinding.cve_ids.length > 0;
+    if (hasEpss || hasCvss || hasCve) {
+      meta += '<div style="display:flex;align-items:flex-start;gap:24px;flex-wrap:wrap;margin-bottom:10px;">';
+      if (hasEpss) {
+        const epssColor = currentFinding.epss_score >= 0.75 ? '#ef4444' : currentFinding.epss_score >= 0.3 ? '#f97316' : '#22c55e';
+        meta += '<div><div style="font-size:10px;color:var(--text3);text-transform:uppercase;letter-spacing:0.08em;margin-bottom:3px;display:flex;align-items:center;gap:4px;">Exploit Probability (30d)<span class="info-icon" data-tip="EPSS — Exploit Prediction Scoring System. The probability this vulnerability will be exploited in the wild within the next 30 days. Higher % = more urgent. Sourced from FIRST.org, updated daily.">i</span></div>';
+        meta += '<div style="font-size:16px;font-weight:800;color:' + epssColor + ';">' + (currentFinding.epss_score * 100).toFixed(2) + '%</div>';
+        if (currentFinding.epss_percentile > 0) meta += '<div style="font-size:10px;color:var(--text3);">Percentile: ' + (currentFinding.epss_percentile > 1 ? currentFinding.epss_percentile.toFixed(1) : (currentFinding.epss_percentile * 100).toFixed(1)) + '%</div>';
+        meta += '</div>';
+      }
+      if (hasCvss) {
+        const cvssColor = currentFinding.cvss_score >= 9 ? '#ef4444' : currentFinding.cvss_score >= 7 ? '#f97316' : currentFinding.cvss_score >= 4 ? '#eab308' : '#22c55e';
+        meta += '<div><div style="font-size:10px;color:var(--text3);text-transform:uppercase;letter-spacing:0.08em;margin-bottom:3px;display:flex;align-items:center;gap:4px;">CVSS Score<span class="info-icon" data-tip="CVSS — Common Vulnerability Scoring System. A 0-10 severity score based on how easy the vulnerability is to exploit and how damaging it could be. Critical: 9+, High: 7-8.9, Medium: 4-6.9, Low: 0-3.9.">i</span></div>';
+        meta += '<div style="font-size:16px;font-weight:800;color:' + cvssColor + ';">' + currentFinding.cvss_score.toFixed(1) + ' / 10</div></div>';
+      }
+      if (hasCve) {
+        meta += '<div><div style="font-size:10px;color:var(--text3);text-transform:uppercase;letter-spacing:0.08em;margin-bottom:4px;">CVE IDs</div>';
+        meta += '<div style="display:flex;gap:6px;flex-wrap:wrap;">';
+        currentFinding.cve_ids.forEach(function(cve) {
+          meta += '<a href="https://nvd.nist.gov/vuln/detail/' + escHtml(cve) + '" target="_blank" style="font-size:11px;font-weight:600;color:var(--accent2);background:var(--bg3);padding:3px 10px;border-radius:4px;border:1px solid var(--border);text-decoration:none;">' + escHtml(cve) + ' ↗</a>';
+        });
+        meta += '</div></div>';
+      }
+      meta += '</div>';
+    }
+
+    // Row 4: Risk rationale
+    if (currentFinding.risk_rationale) {
+      meta += '<div style="font-size:11px;color:var(--text2);background:var(--bg3);padding:8px 12px;border-radius:6px;border-left:3px solid var(--accent);">';
+      meta += '<span style="font-size:10px;color:var(--text3);font-weight:700;text-transform:uppercase;letter-spacing:0.08em;">Risk Scoring Rationale</span><br><span style="margin-top:4px;display:inline-block;">' + escHtml(currentFinding.risk_rationale) + '</span>';
+      meta += '</div>';
+    }
+
     document.getElementById('detail-meta').innerHTML = meta;
 
     // Load existing translations

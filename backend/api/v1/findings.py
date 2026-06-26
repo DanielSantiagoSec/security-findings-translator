@@ -6,13 +6,15 @@ from ...database import get_db
 from ...models.db import Finding, User
 from ...models.schemas import DashboardStats, FindingListOut, FindingOut, FindingStatusUpdate, UploadResult
 from ...services.auth import get_current_user
-from ...services.finding_service import get_dashboard_stats, get_findings, ingest_file
+from ...services.finding_service import get_dashboard_stats, get_findings, ingest_file, verify_project_access
 from ...config import get_settings
 import uuid
 
 settings = get_settings()
 router = APIRouter(prefix="/findings", tags=["findings"])
 
+
+ALLOWED_EXTENSIONS = {".json", ".csv"}
 
 @router.post("/upload", response_model=UploadResult, status_code=201)
 async def upload_findings(
@@ -21,6 +23,12 @@ async def upload_findings(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
+    from pathlib import Path
+    ext = Path(file.filename or "").suffix.lower()
+    if ext not in ALLOWED_EXTENSIONS:
+        raise HTTPException(status_code=400, detail="Invalid file type. Only .json and .csv files are accepted.")
+    if not await verify_project_access(project_id, str(current_user.id), db):
+        raise HTTPException(status_code=403, detail="Access denied to this project")
     content = await file.read()
     if len(content) > settings.max_upload_size_mb * 1024 * 1024:
         raise HTTPException(status_code=413, detail="File too large")
@@ -47,6 +55,8 @@ async def list_findings(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
+    if not await verify_project_access(project_id, str(current_user.id), db):
+        raise HTTPException(status_code=403, detail="Access denied to this project")
     findings, total = await get_findings(project_id, db, severity, status, source, page, page_size)
     return FindingListOut(findings=findings, total=total, page=page, page_size=page_size)
 
@@ -57,6 +67,8 @@ async def dashboard(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
+    if not await verify_project_access(project_id, str(current_user.id), db):
+        raise HTTPException(status_code=403, detail="Access denied to this project")
     return await get_dashboard_stats(project_id, db)
 
 
@@ -100,6 +112,8 @@ async def clear_findings(
     )).scalars().all()
     if finding_ids:
         await db.execute(delete(Translation).where(Translation.finding_id.in_(finding_ids)))
+    if not await verify_project_access(project_id, str(current_user.id), db):
+        raise HTTPException(status_code=403, detail="Access denied to this project")
     await db.execute(delete(Finding).where(Finding.project_id == project_id))
     await db.flush()
     return {"message": "All findings cleared", "project_id": project_id}

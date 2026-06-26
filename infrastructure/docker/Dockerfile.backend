@@ -25,7 +25,11 @@ RUN pip install --no-cache-dir \
     boto3 \
     httpx \
     click \
-    rich
+    rich \
+    slowapi
+
+RUN adduser --disabled-password --no-create-home --uid 1001 appuser
+USER appuser
 
 EXPOSE 8000
 

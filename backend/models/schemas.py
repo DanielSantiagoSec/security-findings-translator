@@ -6,7 +6,7 @@ from pydantic import BaseModel, EmailStr, Field, field_validator
 
 class UserCreate(BaseModel):
     email: EmailStr
-    password: str = Field(min_length=8)
+    password: str = Field(min_length=8, max_length=72)
     full_name: str = Field(min_length=1, max_length=255)
 
 
@@ -63,6 +63,11 @@ class FindingOut(BaseModel):
     cve_ids: Optional[list[str]]
     risk_score: Optional[float]
     risk_label: Optional[str]
+    epss_score: Optional[float]
+    epss_percentile: Optional[float]
+    in_kev: bool
+    scoring_method: Optional[str]
+    risk_rationale: Optional[str]
     asset_id: Optional[str]
     asset_type: Optional[str]
     asset_name: Optional[str]

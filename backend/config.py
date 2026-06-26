@@ -13,7 +13,7 @@ class Settings(BaseSettings):
     api_prefix: str = "/api/v1"
     allowed_origins: list[str] = ["http://localhost:3000", "http://localhost:5173"]
 
-    secret_key: str = "change-me-in-production"
+    secret_key: str  # Required — set SECRET_KEY in .env or app will not start
     algorithm: str = "HS256"
     access_token_expire_minutes: int = 60
     refresh_token_expire_days: int = 7

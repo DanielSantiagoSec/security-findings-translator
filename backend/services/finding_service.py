@@ -105,6 +105,11 @@ async def _upsert_finding(nf, risk_result, project_id: str, db: AsyncSession):
         cve_ids=nf.cve_ids or [],
         risk_score=risk_result.composite_score,
         risk_label=risk_result.risk_label,
+        epss_score=risk_result.epss_score,
+        epss_percentile=risk_result.epss_percentile,
+        in_kev=risk_result.in_kev,
+        scoring_method=risk_result.scoring_method,
+        risk_rationale=risk_result.risk_rationale,
         asset_id=asset.resource_id if asset else None,
         asset_type=asset.resource_type if asset else None,
         asset_name=asset.resource_name if asset else None,
@@ -174,3 +179,23 @@ async def get_dashboard_stats(project_id: str, db: AsyncSession) -> dict:
         "severity_breakdown": [{"severity": k, "count": v} for k, v in sev_map.items()],
         "top_findings": top_findings,
     }
+
+
+async def verify_project_access(project_id: str, user_id: str, db: AsyncSession) -> bool:
+    from ..models.db import Project
+    result = await db.execute(
+        select(Project).where(Project.id == project_id)
+    )
+    project = result.scalar_one_or_none()
+    if not project:
+        return False
+    if project.created_by == user_id:
+        return True
+    from ..models.db import ProjectMember
+    member = await db.execute(
+        select(ProjectMember).where(
+            ProjectMember.project_id == project_id,
+            ProjectMember.user_id == user_id
+        )
+    )
+    return member.scalar_one_or_none() is not None

@@ -1,4 +1,5 @@
 from fastapi import APIRouter, Depends, HTTPException, Request, status
+from backend.main import limiter
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from ...database import get_db
@@ -13,7 +14,8 @@ router = APIRouter(prefix="/auth", tags=["auth"])
 
 
 @router.post("/register", response_model=UserOut, status_code=201)
-async def register(body: UserCreate, db: AsyncSession = Depends(get_db)):
+@limiter.limit("3/minute")
+async def register(request: Request, body: UserCreate, db: AsyncSession = Depends(get_db)):
     existing = (await db.execute(select(User).where(User.email == body.email))).scalar_one_or_none()
     if existing:
         raise HTTPException(status_code=400, detail="Email already registered")
@@ -29,13 +31,16 @@ async def register(body: UserCreate, db: AsyncSession = Depends(get_db)):
     return user
 
 
+DUMMY_HASH = hash_password("dummy-password-never-matches-xxxxxxxxxxxxxxxx")
+
 @router.post("/login", response_model=TokenOut)
-async def login(body: UserLogin, request: Request, db: AsyncSession = Depends(get_db)):
+@limiter.limit("5/minute")
+async def login(request: Request, body: UserLogin, db: AsyncSession = Depends(get_db)):
     user = (await db.execute(select(User).where(User.email == body.email))).scalar_one_or_none()
-    if not user or not verify_password(body.password, user.hashed_password):
+    hash_to_check = user.hashed_password if user else DUMMY_HASH
+    password_valid = verify_password(body.password, hash_to_check)
+    if not user or not password_valid or not user.is_active:
         raise HTTPException(status_code=401, detail="Invalid credentials")
-    if not user.is_active:
-        raise HTTPException(status_code=403, detail="Account disabled")
     db.add(AuditLog(
         user_id=user.id, action="user.login", resource_type="user", resource_id=user.id,
         ip_address=request.client.host if request.client else None,
