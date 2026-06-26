@@ -181,8 +181,15 @@ async def get_dashboard_stats(project_id: str, db: AsyncSession) -> dict:
     }
 
 
+DEFAULT_PROJECT_ID = '00000000-0000-0000-0000-000000000001'
+
 async def verify_project_access(project_id: str, user_id: str, db: AsyncSession) -> bool:
     from ..models.db import Project
+    # Default project is accessible to all authenticated users
+    if project_id == DEFAULT_PROJECT_ID:
+        result = await db.execute(select(Project).where(Project.id == project_id))
+        return result.scalar_one_or_none() is not None
+    # For other projects check ownership or membership
     result = await db.execute(
         select(Project).where(Project.id == project_id)
     )

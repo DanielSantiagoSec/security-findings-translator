@@ -28,7 +28,7 @@ RUN pip install --no-cache-dir \
     rich \
     slowapi
 
-RUN adduser --disabled-password --no-create-home --uid 1001 appuser
+RUN adduser --disabled-password --no-create-home --uid 1001 appuser &&     mkdir -p /tmp/sft_uploads &&     chown -R appuser:appuser /tmp/sft_uploads
 USER appuser
 
 EXPOSE 8000
