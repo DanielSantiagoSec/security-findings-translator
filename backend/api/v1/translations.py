@@ -22,6 +22,7 @@ async def translate_finding(
             audience=body.audience,
             db=db,
             context=body.context,
+            user_api_key=body.api_key,
         )
         return translation
     except ValueError as e:
@@ -42,6 +43,7 @@ async def refresh_translation(
             audience=body.audience,
             db=db,
             force_refresh=True,
+            user_api_key=body.api_key,
         )
     except ValueError as e:
         raise HTTPException(status_code=404, detail=str(e))

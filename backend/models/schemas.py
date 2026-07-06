@@ -107,6 +107,7 @@ class TranslateRequest(BaseModel):
         pattern="^(executive|manager|developer|security_analyst|soc_analyst|devsecops|grc)$"
     )
     context: Optional[dict[str, Any]] = None
+    api_key: Optional[str] = Field(default=None, max_length=200)
 
 
 class TranslationOut(BaseModel):

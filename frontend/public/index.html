@@ -205,6 +205,7 @@
     </div>
     <div style="flex:1;"></div>
     <div class="topbar-actions">
+      <button class="btn-sm" onclick="openSettingsModal()">⚙ Settings</button>
       <button class="btn-sm btn-danger" onclick="clearFindings()">Clear All</button>
       <button class="btn-sm btn-accent" onclick="openUploadModal()">+ Upload</button>
       <button class="btn-sm" onclick="logout()">Sign out</button>
@@ -285,6 +286,26 @@
           <div id="translation-sections"></div>
         </div>
       </div>
+    </div>
+  </div>
+</div>
+
+<!-- SETTINGS MODAL -->
+<div class="modal-overlay hidden" id="settings-modal" onclick="if(event.target===this)closeSettingsModal()">
+  <div class="modal">
+    <div class="modal-title">Settings</div>
+    <div class="modal-sub">Bring your own free Gemini API key. Stored only in your browser — never sent to our database.</div>
+    <div style="margin-bottom:8px;font-size:12px;font-weight:600;color:var(--text2);">Gemini API Key</div>
+    <input id="settings-api-key" class="inp" type="password" placeholder="Paste your Gemini API key" autocomplete="off" />
+    <div style="margin-top:10px;font-size:12px;color:var(--text3);line-height:1.6;">
+      Get a free key at <a href="https://aistudio.google.com" target="_blank" style="color:var(--accent2);">aistudio.google.com</a> — no credit card required.
+      Free tier includes 1,500 translations per day.
+    </div>
+    <div id="settings-msg" style="margin-top:10px;font-size:12px;min-height:16px;"></div>
+    <div class="modal-actions">
+      <button class="btn-secondary" onclick="clearApiKey()">Remove Key</button>
+      <button class="btn-secondary" onclick="closeSettingsModal()">Cancel</button>
+      <button class="btn-primary" onclick="saveApiKey()" style="width:auto;padding:9px 24px;">Save</button>
     </div>
   </div>
 </div>
@@ -407,6 +428,49 @@ async function handleAuth() {
     document.getElementById('login-btn').disabled = false;
     document.getElementById('login-btn').textContent = isRegister ? 'Create account' : 'Sign in';
   }
+}
+
+function getUserApiKey() {
+  return localStorage.getItem('sft_gemini_key') || null;
+}
+
+function openSettingsModal() {
+  document.getElementById('settings-modal').classList.remove('hidden');
+  const existing = getUserApiKey();
+  document.getElementById('settings-api-key').value = existing || '';
+  document.getElementById('settings-msg').textContent = existing ? 'A key is currently saved in this browser.' : '';
+  document.getElementById('settings-msg').style.color = 'var(--text3)';
+}
+
+function closeSettingsModal() {
+  document.getElementById('settings-modal').classList.add('hidden');
+}
+
+function saveApiKey() {
+  const key = document.getElementById('settings-api-key').value.trim();
+  const msg = document.getElementById('settings-msg');
+  if (!key) {
+    msg.textContent = 'Please paste a key, or use Remove Key to clear it.';
+    msg.style.color = 'var(--critical)';
+    return;
+  }
+  if (key.length < 20) {
+    msg.textContent = 'That key looks too short. Please check you copied the full key.';
+    msg.style.color = 'var(--critical)';
+    return;
+  }
+  localStorage.setItem('sft_gemini_key', key);
+  msg.textContent = 'Key saved. Translations will now use your key.';
+  msg.style.color = 'var(--low)';
+  setTimeout(closeSettingsModal, 1200);
+}
+
+function clearApiKey() {
+  localStorage.removeItem('sft_gemini_key');
+  document.getElementById('settings-api-key').value = '';
+  const msg = document.getElementById('settings-msg');
+  msg.textContent = 'Key removed from this browser.';
+  msg.style.color = 'var(--text3)';
 }
 
 function logout() {
@@ -662,7 +726,7 @@ async function regenerateTranslation() {
   document.getElementById('loading-text').textContent = 'Regenerating ' + AUDIENCE_LABELS[targetAudience] + ' translation...';
 
   try {
-    const t = await apiFetch('POST', '/translations/refresh', {finding_id: currentFinding.id, audience: targetAudience});
+    const t = await apiFetch('POST', '/translations/refresh', {finding_id: currentFinding.id, audience: targetAudience, api_key: getUserApiKey()});
     cachedTranslations[targetAudience] = t;
     renderAudienceTabs();
     if (currentAudience === targetAudience) {
@@ -701,7 +765,7 @@ async function translateFinding() {
   document.getElementById('loading-text').textContent = 'Generating ' + AUDIENCE_LABELS[targetAudience] + ' translation...';
 
   try {
-    const t = await apiFetch('POST', '/translations', {finding_id: currentFinding.id, audience: targetAudience});
+    const t = await apiFetch('POST', '/translations', {finding_id: currentFinding.id, audience: targetAudience, api_key: getUserApiKey()});
     cachedTranslations[targetAudience] = t;
     renderAudienceTabs();
     if (currentAudience === targetAudience) {

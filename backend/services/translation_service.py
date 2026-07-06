@@ -51,6 +51,7 @@ async def get_or_create_translation(
     db: AsyncSession,
     context: Optional[dict[str, Any]] = None,
     force_refresh: bool = False,
+    user_api_key: Optional[str] = None,
 ) -> Translation:
     if not force_refresh:
         existing = await db.execute(
@@ -70,7 +71,9 @@ async def get_or_create_translation(
 
     nf = _db_finding_to_normalized(finding_row)
 
-    api_key = settings.gemini_api_key or settings.anthropic_api_key
+    api_key = user_api_key or settings.gemini_api_key or settings.anthropic_api_key
+    if not api_key:
+        raise ValueError("No API key available. Add your free Gemini API key in Settings.")
     engine = TranslationEngine(
         api_key=api_key,
         model=settings.translator_model,
