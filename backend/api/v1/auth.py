@@ -74,3 +74,43 @@ async def refresh(body: RefreshTokenIn, db: AsyncSession = Depends(get_db)):
 @router.get("/me", response_model=UserOut)
 async def me(current_user: User = Depends(get_current_user)):
     return current_user
+
+
+@router.post("/demo", response_model=TokenOut)
+@limiter.limit("10/minute")
+async def demo_login(request: Request, db: AsyncSession = Depends(get_db)):
+    """Shared demo account with pre-loaded findings. No registration required."""
+    DEMO_EMAIL = "demo@sft.local"
+    user = (await db.execute(select(User).where(User.email == DEMO_EMAIL))).scalar_one_or_none()
+    if not user:
+        user = User(
+            email=DEMO_EMAIL,
+            hashed_password=hash_password("demo-account-not-for-login-" + settings.secret_key[:8]),
+            full_name="Demo User",
+            role="viewer",
+        )
+        db.add(user)
+        await db.flush()
+
+    # Seed demo findings if none exist yet
+    from ...services.finding_service import ingest_file, DEFAULT_PROJECT_ID
+    from ...models.db import Finding
+    from pathlib import Path as P
+    count = (await db.execute(
+        select(Finding).where(Finding.project_id == DEFAULT_PROJECT_ID).limit(1)
+    )).scalar_one_or_none()
+    if not count:
+        examples_dir = P(__file__).parent.parent.parent.parent / "cli" / "examples"
+        for fname in ["guardduty_findings.json", "security_hub_log4shell.json"]:
+            fpath = examples_dir / fname
+            if fpath.exists():
+                try:
+                    await ingest_file(fpath.read_bytes(), fname, DEFAULT_PROJECT_ID, db)
+                except Exception:
+                    pass
+
+    return TokenOut(
+        access_token=create_access_token(user.id, user.role),
+        refresh_token=create_refresh_token(user.id),
+        expires_in=settings.access_token_expire_minutes * 60,
+    )

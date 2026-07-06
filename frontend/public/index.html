@@ -177,6 +177,7 @@
     <div id="login-msg" class="err-msg"></div>
     <br>
     <button class="btn-primary" id="login-btn" onclick="handleAuth()">Sign in</button>
+    <button class="btn-secondary" onclick="demoLogin()" style="width:100%;margin-top:10px;">Try Demo — no signup needed</button>
     <div class="login-toggle">
       <span id="login-toggle-text">No account? </span>
       <span onclick="toggleMode()">
@@ -427,6 +428,22 @@ async function handleAuth() {
   } finally {
     document.getElementById('login-btn').disabled = false;
     document.getElementById('login-btn').textContent = isRegister ? 'Create account' : 'Sign in';
+  }
+}
+
+let isDemoUser = false;
+
+async function demoLogin() {
+  try {
+    const data = await apiFetch('POST', '/auth/demo');
+    token = data.access_token;
+    localStorage.setItem('sft_token', token);
+    isDemoUser = true;
+    showApp();
+    showToast('Demo mode — findings are shared and read-only. Register for your own workspace.');
+    document.querySelector('.btn-danger').style.display = 'none';
+  } catch(e) {
+    alert('Demo unavailable: ' + e.message);
   }
 }
 
