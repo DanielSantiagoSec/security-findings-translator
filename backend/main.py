@@ -1,7 +1,9 @@
 from contextlib import asynccontextmanager
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import JSONResponse
+from fastapi.responses import JSONResponse, FileResponse
+from fastapi.staticfiles import StaticFiles
+from pathlib import Path
 from slowapi import Limiter, _rate_limit_exceeded_handler
 from slowapi.util import get_remote_address
 from slowapi.errors import RateLimitExceeded
@@ -88,3 +90,16 @@ async def health():
 @app.get("/api/v1/ping")
 async def ping():
     return {"pong": True}
+
+
+# Serve frontend (production deployment without nginx)
+FRONTEND_DIR = Path(__file__).parent.parent / "frontend" / "public"
+if FRONTEND_DIR.exists():
+    @app.get("/")
+    async def serve_frontend():
+        return FileResponse(FRONTEND_DIR / "index.html")
+
+    @app.get("/favicon.ico")
+    async def serve_favicon():
+        index = FRONTEND_DIR / "index.html"
+        return FileResponse(index)
